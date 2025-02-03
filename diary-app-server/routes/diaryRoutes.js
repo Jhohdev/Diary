@@ -14,36 +14,43 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+// GET 요청: 다이어리 목록 가져오기 (검색 및 페이지네이션)
 router.get('/diary', async (req, res) => {
-  console.log('GET /diary called'); // 라우트 호출 확인
-  const { search, filter } = req.query;
+  console.log('GET /diary called');
+  const { search = '', filter = 'title', page = 1, limit = 15 } = req.query;
 
-  console.log('Search Parameter:', search); // 검색어 확인
-  console.log('Filter Parameter:', filter); // 필터 확인
+  const offset = (page - 1) * limit;
 
   try {
     let query = 'SELECT * FROM diary';
     const params = [];
 
-    if (search && search.trim()) {
+    // 검색 필터에 따라 쿼리 작성
+    if (search.trim()) {
       if (filter === 'title') {
         query += ' WHERE title LIKE ?';
         params.push(`%${search.trim()}%`);
       } else if (filter === 'content') {
         query += ' WHERE content LIKE ?';
         params.push(`%${search.trim()}%`);
-      } else {
-        console.log('Invalid filter provided.');
       }
     }
 
-    console.log('Generated Query:', query); // SQL 쿼리 로그
-    console.log('Query Params:', params); // SQL 파라미터 로그
+    // LIMIT과 OFFSET 직접 삽입
+    query += ` LIMIT ${Number(limit)} OFFSET ${Number(offset)}`;
+    console.log('Generated Query:', query);
 
     const [rows] = await db.execute(query, params);
-    console.log('Query Result:', rows); // SQL 결과 로그
 
-    res.status(200).json(rows);
+    const [countResult] = await db.execute('SELECT COUNT(*) AS total FROM diary');
+    const total = countResult[0].total;
+
+    res.status(200).json({
+      total, // 전체 데이터 수
+      page: Number(page), // 현재 페이지
+      limit: Number(limit), // 페이지당 항목 수
+      data: rows, // 현재 페이지의 데이터
+    });
   } catch (error) {
     console.error('Error fetching diaries:', error.message);
     res.status(500).json({ error: 'Failed to fetch diaries' });

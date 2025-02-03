@@ -4,10 +4,13 @@
 
     <!-- 검색 UI -->
     <div class="search-bar">
+      <!-- 검색 필터 -->
       <select v-model="searchFilter">
         <option value="title">Title</option>
         <option value="content">Content</option>
       </select>
+
+      <!-- 검색어 입력 -->
       <input
         type="text"
         v-model="searchQuery"
@@ -25,10 +28,20 @@
         <br />
         {{ entry.content }}<br />
         <em>{{ new Date(entry.created_at).toLocaleString() }}</em>
-        <!-- 삭제 버튼 -->
-        <button @click="deleteDiary(entry.id)">Delete</button>
       </li>
     </ul>
+
+    <!-- 페이지네이션 -->
+    <div class="pagination">
+      <button
+        v-for="page in totalPages"
+        :key="page"
+        @click="changePage(page)"
+        :class="{ active: page === currentPage }"
+      >
+        {{ page }}
+      </button>
+    </div>
   </div>
 </template>
 
@@ -41,7 +54,10 @@ export default {
     return {
       diaries: [], // 다이어리 데이터
       searchQuery: "", // 검색어
-      searchFilter: "title", // 검색 필터 (기본값: title)
+      searchFilter: "title", // 기본 검색 필터
+      currentPage: 1, // 현재 페이지
+      totalPages: 1, // 총 페이지 수
+      limit: 15, // 페이지당 항목 수
     };
   },
   created() {
@@ -49,14 +65,20 @@ export default {
   },
   methods: {
     // 다이어리 데이터 가져오기
-    fetchDiaries(search = "", filter = "title") {
-      console.log("Search Query Sent:", search, "Filter:", filter); // 검색어 및 필터 확인
+    fetchDiaries() {
+      const params = {
+        search: this.searchQuery,
+        filter: this.searchFilter, // 검색 필터 추가
+        page: this.currentPage,
+        limit: this.limit,
+      };
 
       apiClient
-        .get("/diary", { params: { search, filter } }) // 검색어와 필터 전달
+        .get("/diary", { params })
         .then((response) => {
-          console.log("Fetched diaries:", response.data); // 응답 확인
-          this.diaries = response.data;
+          console.log("Fetched diaries:", response.data);
+          this.diaries = response.data.data; // 현재 페이지 데이터
+          this.totalPages = Math.ceil(response.data.total / this.limit); // 총 페이지 계산
         })
         .catch((error) => {
           console.error("Error fetching diaries:", error.message);
@@ -64,21 +86,14 @@ export default {
     },
     // 검색 실행
     searchDiaries() {
-      this.fetchDiaries(this.searchQuery, this.searchFilter); // 검색어와 필터 전달
+      this.currentPage = 1; // 검색 시 첫 페이지로 이동
+      this.fetchDiaries();
     },
-    // 다이어리 삭제
-    deleteDiary(id) {
-      if (confirm("Are you sure you want to delete this diary?")) {
-        apiClient
-          .delete(`/diary/${id}`) // 삭제 요청
-          .then(() => {
-            alert("Diary deleted successfully.");
-            this.fetchDiaries(); // 삭제 후 목록 갱신
-          })
-          .catch((error) => {
-            console.error("Error deleting diary:", error.message);
-            alert("Failed to delete diary.");
-          });
+    // 페이지 변경
+    changePage(page) {
+      if (page >= 1 && page <= this.totalPages) {
+        this.currentPage = page;
+        this.fetchDiaries();
       }
     },
   },
@@ -109,23 +124,25 @@ export default {
 .search-bar button:hover {
   background-color: #0056b3;
 }
-ul {
-  list-style: none;
-  padding: 0;
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
 }
-ul li {
-  margin-bottom: 10px;
-}
-ul li button {
-  margin-top: 5px;
-  padding: 5px 10px;
-  background-color: red;
+.pagination button {
+  padding: 8px 16px;
+  background-color: #007bff;
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
 }
-ul li button:hover {
-  background-color: darkred;
+.pagination button.active {
+  background-color: #0056b3;
+  font-weight: bold;
+}
+.pagination button:hover {
+  background-color: #0056b3;
 }
 </style>
