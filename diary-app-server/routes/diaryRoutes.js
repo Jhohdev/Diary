@@ -57,7 +57,7 @@ router.get('/diary', async (req, res) => {
   }
 });
 
-// GET 요청: 특정 다이어리 가져오기
+// 상세보기
 router.get('/diary/:id', async (req, res) => {
   const diaryId = req.params.id;
 
@@ -80,18 +80,27 @@ router.get('/diary/:id', async (req, res) => {
 // POST 요청: 새로운 다이어리 작성
 router.post('/diary', upload.single('photo'), async (req, res) => {
   try {
-    const { title, content } = req.body;
+    console.log("📌 [BACKEND] POST /diary 요청 수신됨");
+
+    const { title, content, created_at } = req.body;
     const photoPath = req.file ? req.file.path : null;
 
+    console.log("📌 [BACKEND] 받은 데이터:", {
+      title,
+      content,
+      created_at,
+      photoPath,
+    });
+
     const [result] = await db.execute(
-      'INSERT INTO diary (title, content, photo_path) VALUES (?, ?, ?)',
-      [title, content, photoPath]
+      'INSERT INTO diary (title, content, photo_path, created_at) VALUES (?, ?, ?, ?)',
+      [title, content, photoPath, created_at]
     );
 
-    console.log('Inserted Diary ID:', result.insertId); // 삽입된 데이터 ID
+    console.log("✅ [BACKEND] 데이터 저장 완료! ID:", result.insertId);
     res.status(201).json({ message: '다이어리가 성공적으로 저장되었습니다!' });
   } catch (error) {
-    console.error('Error in POST /diary:', error.message);
+    console.error("❌ [BACKEND] 다이어리 저장 중 오류:", error.message);
     res.status(500).json({ message: '서버에서 오류가 발생했습니다.' });
   }
 });
